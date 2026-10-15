@@ -1,0 +1,56 @@
+name: Start Vastrum Pipeline
+
+on:
+  workflow_dispatch:
+
+jobs:
+  start-pipeline:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Start EC2 Instance
+        run: |
+          aws ec2 start-instances \
+            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+            --region ${{ secrets.AWS_REGION }}
+          
+          aws ec2 wait instance-running \
+            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+            --region ${{ secrets.AWS_REGION }}
+          
+          echo "Instance started!"
+      
+      - name: Wait for pipeline
+        run: sleep 2700  # 45 minutes
+
+  stop-pipeline:
+    runs-on: ubuntu-latest
+    needs: start-pipeline
+    if: always()
+    
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Stop EC2 Instance
+        run: |
+          aws ec2 stop-instances \
+            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+            --region ${{ secrets.AWS_REGION }}
+          
+          aws ec2 wait instance-stopped \
+            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+            --region ${{ secrets.AWS_REGION }}
+          
+          echo "Instance stopped!"
